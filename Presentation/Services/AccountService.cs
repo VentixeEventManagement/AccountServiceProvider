@@ -92,4 +92,28 @@ public class AccountService(UserManager<IdentityUser> userManager) : AccountGrpc
 
         return new ValidateCredentialsReply { Succeeded = true, Message = "Login successful", UserId = user.Id };
     }
+
+    public override async Task<UpdatePhoneNumberReply> UpdatePhoneNumber(UpdatePhoneNumberRequest request, ServerCallContext context)
+    {
+        var user = await _userManager.FindByIdAsync(request.UserId);
+        if (user == null)
+        {
+            return new UpdatePhoneNumberReply { Succeeded = false, Message = "No account found." };
+        }
+
+        if (!string.Equals(user.PhoneNumber, request.PhoneNumber, StringComparison.Ordinal))
+        {
+            user.PhoneNumber = request.PhoneNumber;
+        }
+
+        var result = await _userManager.UpdateAsync(user);
+
+        return new UpdatePhoneNumberReply
+        {
+            Succeeded = result.Succeeded,
+            Message = result.Succeeded
+                ? "Account was updated successfully."
+                : string.Join(", ", result.Errors.Select(e => e.Description))
+        };
+    }
 }
