@@ -70,4 +70,26 @@ public class AccountService(UserManager<IdentityUser> userManager) : AccountGrpc
         return new GetAccountReply { Succeeded = true, Account = account, Message = "Account was found." };
     }
 
+    public override async Task<ValidateCredentialsReply> ValidateCredentials(ValidateCredentialsRequest request, ServerCallContext context)
+    {
+
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+        {
+            return new ValidateCredentialsReply { Succeeded = false, Message = "Email and password must be provided." };
+        }
+
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+        {
+            return new ValidateCredentialsReply { Succeeded = false, Message = "Invalid credentials." };
+        }
+
+        var isValid = await _userManager.CheckPasswordAsync(user, request.Password);
+        if (!isValid)
+        {
+            return new ValidateCredentialsReply { Succeeded = false, Message = "Invalid credentials" };
+        }
+
+        return new ValidateCredentialsReply { Succeeded = true, Message = "Login successful", UserId = user.Id };
+    }
 }
