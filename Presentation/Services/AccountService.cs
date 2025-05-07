@@ -52,4 +52,22 @@ public class AccountService(UserManager<IdentityUser> userManager) : AccountGrpc
         return reply;
     }
 
+    public override async Task<GetAccountReply> GetAccount(GetAccountRequest request, ServerCallContext context)
+    {
+        var user = await _userManager.FindByIdAsync(request.UserId);
+        if (user == null)
+        {
+            return new GetAccountReply { Succeeded = false, Message = "No account found." };
+        }
+
+        var account = new Account
+        {
+            UserId = user.Id,
+            Email = user.Email,
+            PhoneNumber = user.PhoneNumber ?? "",
+        };
+
+        return new GetAccountReply { Succeeded = true, Account = account, Message = "Account was found." };
+    }
+
 }
