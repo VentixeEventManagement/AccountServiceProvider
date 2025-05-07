@@ -116,4 +116,23 @@ public class AccountService(UserManager<IdentityUser> userManager) : AccountGrpc
                 : string.Join(", ", result.Errors.Select(e => e.Description))
         };
     }
+
+    public override async Task<DeleteAccountByIdReply> DeleteAccountById(DeleteAccountByIdRequest request, ServerCallContext context)
+    {
+        var user = await _userManager.FindByIdAsync(request.UserId);
+        if (user == null)
+        {
+            return new DeleteAccountByIdReply { Succeeded = false, Message = "No account found." };
+        }
+
+        var result = await _userManager.DeleteAsync(user);
+
+        return new DeleteAccountByIdReply
+        {
+            Succeeded = result.Succeeded,
+            Message = result.Succeeded
+                ? "Account was deleted successfully."
+                : string.Join(", ", result.Errors.Select(e => e.Description))
+        };
+    }
 }
