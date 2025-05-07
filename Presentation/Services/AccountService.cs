@@ -1,6 +1,9 @@
-﻿namespace Presentation.Services
+﻿using Microsoft.AspNetCore.Identity;
+
+namespace Presentation.Services;
+
+public class AccountService(UserManager<IdentityUser> userManager)
 {
-    public class AccountService
-    {
-    }
+    private readonly UserManager<IdentityUser> _userManager = userManager;
+
 }
