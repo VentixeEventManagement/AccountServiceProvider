@@ -202,4 +202,24 @@ public class AccountService(UserManager<IdentityUser> userManager) : AccountGrpc
                 : string.Join(", ", result.Errors.Select(e => e.Description))
         };
     }
+
+    public override async Task<ResetPasswordReply> ResetPassword(ResetPasswordRequest request, ServerCallContext context)
+    {
+        var user = await _userManager.FindByIdAsync(request.UserId);
+        if (user == null)
+        {
+            return new ResetPasswordReply { Succeeded = false, Message = "User not found." };
+        }
+
+
+        var result = await _userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+
+        return new ResetPasswordReply
+        {
+            Succeeded = result.Succeeded,
+            Message = result.Succeeded
+                ? "Password reset successfully."
+                : string.Join(", ", result.Errors.Select(e => e.Description))
+        };
+    }
 }
