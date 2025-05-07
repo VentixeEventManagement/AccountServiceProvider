@@ -1,5 +1,6 @@
 ﻿using Grpc.Core;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace Presentation.Services;
 
@@ -26,6 +27,26 @@ public class AccountService(UserManager<IdentityUser> userManager) : AccountGrpc
         if (result.Succeeded)
         {
             reply.UserId = user.Id;
+        }
+
+        return reply;
+    }
+
+    public override async Task<GetAccountsReply> GetAccounts(GetAccountsRequest request, ServerCallContext context)
+    {
+        var users = await _userManager.Users.ToListAsync();
+
+        var reply = new GetAccountsReply { Succeeded = true, Message = users.Count > 0 ? "Account retrieved successfully." : "No accounts found." };
+
+        foreach (var user in users)
+        {
+            reply.Accounts.Add(new Account
+            {
+                UserId = user.Id,
+                UserName = user.UserName,
+                Email = user.Email,
+                PhoneNumber = user.PhoneNumber ?? "",
+            });
         }
 
         return reply;
