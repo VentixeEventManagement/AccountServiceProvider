@@ -240,4 +240,21 @@ public class AccountService(UserManager<IdentityUser> userManager) : AccountGrpc
             Message = "Token generated successfully."
         };
     }
+
+    public override async Task<GenerateTokenReply> GeneratePasswordResetToken(GenerateTokenRequest request, ServerCallContext context)
+    {
+        var user = await _userManager.FindByIdAsync(request.UserId);
+        if (user == null)
+        {
+            return new GenerateTokenReply { Succeeded = false, Message = "User not found." };
+        }
+
+        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+        return new GenerateTokenReply
+        {
+            Succeeded = true,
+            Token = token,
+            Message = "Password reset token generated."
+        };
+    }
 }
