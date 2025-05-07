@@ -135,4 +135,28 @@ public class AccountService(UserManager<IdentityUser> userManager) : AccountGrpc
                 : string.Join(", ", result.Errors.Select(e => e.Description))
         };
     }
+
+    public override async Task<ConfirmAccountReply> ConfirmAccount(ConfirmAccountRequest request, ServerCallContext context)
+    {
+        var user = await _userManager.FindByIdAsync(request.UserId);
+        if (user == null)
+        {
+            return new ConfirmAccountReply { Succeeded = false, Message = "No account found." };
+        }
+
+        if (await _userManager.IsEmailConfirmedAsync(user))
+        {
+            return new ConfirmAccountReply { Succeeded = true, Message = "Account is already confirmed." };
+        }
+
+        var result = await _userManager.ConfirmEmailAsync(user, request.Token);
+
+        return new ConfirmAccountReply
+        {
+            Succeeded = result.Succeeded,
+            Message = result.Succeeded
+                ? "Email confirmed successfully."
+                : string.Join(", ", result.Errors.Select(e => e.Description))
+        };
+    }
 }
