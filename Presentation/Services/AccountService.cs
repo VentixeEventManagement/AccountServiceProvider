@@ -182,4 +182,24 @@ public class AccountService(UserManager<IdentityUser> userManager) : AccountGrpc
             Token = token
         };
     }
+
+    public override async Task<ConfirmEmailChangeReply> ConfirmEmailChange(ConfirmEmailChangeRequest request, ServerCallContext context)
+    {
+        var user = await _userManager.FindByIdAsync(request.UserId);
+        if (user == null)
+        {
+            return new ConfirmEmailChangeReply { Succeeded = false, Message = "User not found." };
+        }
+
+
+        var result = await _userManager.ChangeEmailAsync(user, request.NewEmail, request.Token);
+
+        return new ConfirmEmailChangeReply
+        {
+            Succeeded = result.Succeeded,
+            Message = result.Succeeded
+                ? "Email confirmed successfully."
+                : string.Join(", ", result.Errors.Select(e => e.Description))
+        };
+    }
 }
