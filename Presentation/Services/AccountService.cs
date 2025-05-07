@@ -159,4 +159,27 @@ public class AccountService(UserManager<IdentityUser> userManager) : AccountGrpc
                 : string.Join(", ", result.Errors.Select(e => e.Description))
         };
     }
+
+    public override async Task<UpdateEmailReply> UpdateEmail(UpdateEmailRequest request, ServerCallContext context)
+    {
+        var user = await _userManager.FindByIdAsync(request.UserId);
+        if (user == null)
+        {
+            return new UpdateEmailReply { Succeeded = false, Message = "User not found." };
+        }
+
+        if (string.Equals(user.Email, request.NewEmail, StringComparison.OrdinalIgnoreCase))
+        {
+            return new UpdateEmailReply { Succeeded = true, Message = "Email is already up to date." };
+        }
+
+        var token = await _userManager.GenerateChangeEmailTokenAsync(user, request.NewEmail);
+
+        return new UpdateEmailReply
+        {
+            Succeeded = true,
+            Message = "Token generated from email change.",
+            Token = token
+        };
+    }
 }
