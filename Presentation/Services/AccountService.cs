@@ -222,4 +222,22 @@ public class AccountService(UserManager<IdentityUser> userManager) : AccountGrpc
                 : string.Join(", ", result.Errors.Select(e => e.Description))
         };
     }
+
+    public override async Task<GenerateTokenReply> GenerateEmailConfirmationToken(GenerateTokenRequest request, ServerCallContext context)
+    {
+        var user = await _userManager.FindByIdAsync(request.UserId);
+        if (user == null)
+        {
+            return new GenerateTokenReply { Succeeded = false, Message = "No account found." };
+        }
+
+        var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+
+        return new GenerateTokenReply
+        {
+            Succeeded = true,
+            Token = token,
+            Message = "Token generated successfully."
+        };
+    }
 }
