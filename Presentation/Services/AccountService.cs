@@ -14,6 +14,7 @@ public class AccountService(UserManager<IdentityUser> userManager) : AccountGrpc
         {
             UserName = request.Email,
             Email = request.Email,
+            EmailConfirmed = true
         };
 
         var result = await _userManager.CreateAsync(user, request.Password);
