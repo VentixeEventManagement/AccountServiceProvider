@@ -4,17 +4,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Presentation.Services;
 
-public class AccountService(UserManager<IdentityUser> userManager) : AccountGrpcService.AccountGrpcServiceBase
+public class AccountService(UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager) : AccountGrpcService.AccountGrpcServiceBase
 {
     private readonly UserManager<IdentityUser> _userManager = userManager;
+    private readonly RoleManager<IdentityRole> _roleManager = roleManager;
 
     public override async Task<CreateAccountReply> CreateAccount(CreateAccountRequest request, ServerCallContext context)
     {
+
         var user = new IdentityUser
         {
             UserName = request.Email,
             Email = request.Email,
-            EmailConfirmed = true
+            EmailConfirmed = true,
         };
 
         var result = await _userManager.CreateAsync(user, request.Password);
@@ -25,11 +27,24 @@ public class AccountService(UserManager<IdentityUser> userManager) : AccountGrpc
             Message = result.Succeeded ? "Account was created successfully." : string.Join(", ", result.Errors.Select(e => e.Description))
         };
 
-        if (result.Succeeded)
-        {
-            reply.UserId = user.Id;
+        if (!result.Succeeded)
+            return reply;
+
+        var defaultRole = "User";
+        if (!await _roleManager.RoleExistsAsync(defaultRole)) {
+            await _roleManager.CreateAsync(new IdentityRole(defaultRole));
         }
 
+        var roleResult = await _userManager.AddToRoleAsync(user, defaultRole);
+
+        if (!roleResult.Succeeded)
+        {
+            reply.Succeeded = false;
+            reply.Message = string.Join(", ", roleResult.Errors.Select(e => e.Description));
+            return reply;
+        }
+
+        reply.UserId = user.Id;
         return reply;
     }
 
@@ -41,13 +56,19 @@ public class AccountService(UserManager<IdentityUser> userManager) : AccountGrpc
 
         foreach (var user in users)
         {
-            reply.Accounts.Add(new Account
+            var roles = await _userManager.GetRolesAsync(user);
+            var role = roles.FirstOrDefault();
+
+            var account = new Account
             {
                 UserId = user.Id,
                 UserName = user.UserName,
                 Email = user.Email,
                 PhoneNumber = user.PhoneNumber ?? "",
-            });
+                RoleName = role
+            };
+
+           reply.Accounts.Add(account);
         }
 
         return reply;
@@ -61,11 +82,16 @@ public class AccountService(UserManager<IdentityUser> userManager) : AccountGrpc
             return new GetAccountReply { Succeeded = false, Message = "No account found." };
         }
 
+        var roles = await _userManager.GetRolesAsync(user);
+        var role = roles.FirstOrDefault();
+
         var account = new Account
         {
             UserId = user.Id,
+            UserName = user.UserName,
             Email = user.Email,
             PhoneNumber = user.PhoneNumber ?? "",
+            RoleName = role
         };
 
         return new GetAccountReply { Succeeded = true, Account = account, Message = "Account was found." };
