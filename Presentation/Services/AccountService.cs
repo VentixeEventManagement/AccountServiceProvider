@@ -12,50 +12,91 @@ public class AccountService(UserManager<IdentityUser> userManager, RoleManager<I
     public override async Task<CreateAccountReply> CreateAccount(CreateAccountRequest request, ServerCallContext context)
     {
 
-        var user = new IdentityUser
+        try
         {
-            UserName = request.Email,
-            Email = request.Email,
-            EmailConfirmed = true,
-        };
+            var user = new IdentityUser
+            {
+                UserName = request.Email,
+                Email = request.Email,
+                EmailConfirmed = true,
+            };
 
-        var result = await _userManager.CreateAsync(user, request.Password);
+            var result = await _userManager.CreateAsync(user, request.Password);
 
-        var reply = new CreateAccountReply
-        {
-            Succeeded = result.Succeeded,
-            Message = result.Succeeded ? "Account was created successfully." : string.Join(", ", result.Errors.Select(e => e.Description))
-        };
+            var reply = new CreateAccountReply
+            {
+                Succeeded = result.Succeeded,
+                Message = result.Succeeded ? "Account was created successfully." : string.Join(", ", result.Errors.Select(e => e.Description))
+            };
 
-        if (!result.Succeeded)
+            if (!result.Succeeded)
+                return reply;
+
+            var defaultRole = "User";
+            if (!await _roleManager.RoleExistsAsync(defaultRole))
+            {
+                await _roleManager.CreateAsync(new IdentityRole(defaultRole));
+            }
+
+            var roleResult = await _userManager.AddToRoleAsync(user, defaultRole);
+
+            if (!roleResult.Succeeded)
+            {
+                reply.Succeeded = false;
+                reply.Message = string.Join(", ", roleResult.Errors.Select(e => e.Description));
+                return reply;
+            }
+
+            reply.UserId = user.Id;
             return reply;
-
-        var defaultRole = "User";
-        if (!await _roleManager.RoleExistsAsync(defaultRole)) {
-            await _roleManager.CreateAsync(new IdentityRole(defaultRole));
-        }
-
-        var roleResult = await _userManager.AddToRoleAsync(user, defaultRole);
-
-        if (!roleResult.Succeeded)
+        } catch (Exception ex)
         {
-            reply.Succeeded = false;
-            reply.Message = string.Join(", ", roleResult.Errors.Select(e => e.Description));
-            return reply;
+            return new CreateAccountReply { Succeeded = false, Message = ex.Message };
         }
-
-        reply.UserId = user.Id;
-        return reply;
     }
 
     public override async Task<GetAccountsReply> GetAccounts(GetAccountsRequest request, ServerCallContext context)
     {
-        var users = await _userManager.Users.ToListAsync();
-
-        var reply = new GetAccountsReply { Succeeded = true, Message = users.Count > 0 ? "Account retrieved successfully." : "No accounts found." };
-
-        foreach (var user in users)
+       try
         {
+            var users = await _userManager.Users.ToListAsync();
+
+            var reply = new GetAccountsReply { Succeeded = true, Message = users.Count > 0 ? "Account retrieved successfully." : "No accounts found." };
+
+            foreach (var user in users)
+            {
+                var roles = await _userManager.GetRolesAsync(user);
+                var role = roles.FirstOrDefault();
+
+                var account = new Account
+                {
+                    UserId = user.Id,
+                    UserName = user.UserName,
+                    Email = user.Email,
+                    PhoneNumber = user.PhoneNumber ?? "",
+                    RoleName = role
+                };
+
+                reply.Accounts.Add(account);
+            }
+
+            return reply;
+        } catch (Exception ex)
+        {
+            return new GetAccountsReply { Succeeded = false, Message = ex.Message };
+        }
+    }
+
+    public override async Task<GetAccountReply> GetAccount(GetAccountRequest request, ServerCallContext context)
+    {
+        try
+        {
+            var user = await _userManager.FindByIdAsync(request.UserId);
+            if (user == null)
+            {
+                return new GetAccountReply { Succeeded = false, Message = "No account found." };
+            }
+
             var roles = await _userManager.GetRolesAsync(user);
             var role = roles.FirstOrDefault();
 
@@ -68,33 +109,11 @@ public class AccountService(UserManager<IdentityUser> userManager, RoleManager<I
                 RoleName = role
             };
 
-           reply.Accounts.Add(account);
-        }
-
-        return reply;
-    }
-
-    public override async Task<GetAccountReply> GetAccount(GetAccountRequest request, ServerCallContext context)
-    {
-        var user = await _userManager.FindByIdAsync(request.UserId);
-        if (user == null)
+            return new GetAccountReply { Succeeded = true, Account = account, Message = "Account was found." };
+        } catch (Exception ex)
         {
-            return new GetAccountReply { Succeeded = false, Message = "No account found." };
+            return new GetAccountReply { Succeeded = false, Message = ex.Message };
         }
-
-        var roles = await _userManager.GetRolesAsync(user);
-        var role = roles.FirstOrDefault();
-
-        var account = new Account
-        {
-            UserId = user.Id,
-            UserName = user.UserName,
-            Email = user.Email,
-            PhoneNumber = user.PhoneNumber ?? "",
-            RoleName = role
-        };
-
-        return new GetAccountReply { Succeeded = true, Account = account, Message = "Account was found." };
     }
 
     public override async Task<ValidateCredentialsReply> ValidateCredentials(ValidateCredentialsRequest request, ServerCallContext context)
