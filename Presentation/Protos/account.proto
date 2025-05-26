@@ -10,6 +10,7 @@ service AccountGrpcService {
 	rpc GetAccount (GetAccountRequest) returns (GetAccountReply);
 	rpc UpdatePhoneNumber (UpdatePhoneNumberRequest) returns (UpdatePhoneNumberReply);
 	rpc DeleteAccountById (DeleteAccountByIdRequest) returns (DeleteAccountByIdReply);
+	rpc ChangeUserRole (ChangeUserRoleRequest) returns (ChangeUserRoleReply); 
 
 	rpc ConfirmAccount (ConfirmAccountRequest) returns (ConfirmAccountReply);
 	rpc ConfirmEmailChange (ConfirmEmailChangeRequest) returns (ConfirmEmailChangeReply);
@@ -85,6 +86,16 @@ message DeleteAccountByIdRequest {
 message DeleteAccountByIdReply {
 	bool succeeded = 1;
 	string message = 2;
+}
+
+message ChangeUserRoleRequest {
+    string user_id = 1;
+    string new_role = 2;
+}
+
+message ChangeUserRoleReply {
+    bool succeeded = 1;
+    string message = 2;
 }
 
 message ConfirmAccountRequest {
