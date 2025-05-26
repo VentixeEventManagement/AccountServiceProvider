@@ -303,4 +303,44 @@ public class AccountService(UserManager<IdentityUser> userManager, RoleManager<I
             Message = "Password reset token generated."
         };
     }
+
+    public override async Task<ChangeUserRoleReply> ChangeUserRole(ChangeUserRoleRequest request, ServerCallContext context)
+    {
+        if (string.IsNullOrWhiteSpace(request.NewRole))
+        {
+            return new ChangeUserRoleReply { Succeeded = false, Message = "NewRole must be specified." };
+        }
+
+        var user = await _userManager.FindByIdAsync(request.UserId);
+        if (user == null)
+        {
+            return new ChangeUserRoleReply { Succeeded = false, Message = "User not found." };
+        }
+
+        var currentRoles = await _userManager.GetRolesAsync(user);
+
+        var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
+        if (!removeResult.Succeeded)
+        {
+            return new ChangeUserRoleReply { Succeeded = false, Message = "Failed to remove current roles: " + string.Join(", ", removeResult.Errors.Select(e => e.Description)) };
+        }
+
+        if (!await _roleManager.RoleExistsAsync(request.NewRole))
+        {
+            var roleResult = await _roleManager.CreateAsync(new IdentityRole(request.NewRole));
+            if (!roleResult.Succeeded)
+            {
+                return new ChangeUserRoleReply { Succeeded = false, Message = "Failed to create new role: " + string.Join(", ", roleResult.Errors.Select(e => e.Description)) };
+            }
+        }
+
+        var addResult = await _userManager.AddToRoleAsync(user, request.NewRole);
+        if (!addResult.Succeeded)
+        {
+            return new ChangeUserRoleReply { Succeeded = false, Message = "Failed to add user to new role: " + string.Join(", ", addResult.Errors.Select(e => e.Description)) };
+        }
+
+        return new ChangeUserRoleReply { Succeeded = true, Message = "Role changed successfully" };
+    }
+
 }
