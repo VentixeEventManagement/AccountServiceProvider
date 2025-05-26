@@ -304,13 +304,9 @@ public class AccountService(UserManager<IdentityUser> userManager, RoleManager<I
         };
     }
 
+    // Took help from ChatGpt
     public override async Task<ChangeUserRoleReply> ChangeUserRole(ChangeUserRoleRequest request, ServerCallContext context)
     {
-        if (string.IsNullOrWhiteSpace(request.NewRole))
-        {
-            return new ChangeUserRoleReply { Succeeded = false, Message = "NewRole must be specified." };
-        }
-
         var user = await _userManager.FindByIdAsync(request.UserId);
         if (user == null)
         {
@@ -319,28 +315,30 @@ public class AccountService(UserManager<IdentityUser> userManager, RoleManager<I
 
         var currentRoles = await _userManager.GetRolesAsync(user);
 
+        if (!await _roleManager.RoleExistsAsync(request.NewRole))
+        {
+            return new ChangeUserRoleReply
+            {
+                Succeeded = false,
+                Message = $"Role '{request.NewRole}' does not exist in the system."
+            };
+        }
+
         var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
         if (!removeResult.Succeeded)
         {
-            return new ChangeUserRoleReply { Succeeded = false, Message = "Failed to remove current roles: " + string.Join(", ", removeResult.Errors.Select(e => e.Description)) };
-        }
-
-        if (!await _roleManager.RoleExistsAsync(request.NewRole))
-        {
-            var roleResult = await _roleManager.CreateAsync(new IdentityRole(request.NewRole));
-            if (!roleResult.Succeeded)
-            {
-                return new ChangeUserRoleReply { Succeeded = false, Message = "Failed to create new role: " + string.Join(", ", roleResult.Errors.Select(e => e.Description)) };
-            }
+            var errorMessage = string.Join(", ", removeResult.Errors.Select(e => e.Description));
+            return new ChangeUserRoleReply { Succeeded = false, Message = $"Failed to remove current roles: {errorMessage}" };
         }
 
         var addResult = await _userManager.AddToRoleAsync(user, request.NewRole);
         if (!addResult.Succeeded)
         {
-            return new ChangeUserRoleReply { Succeeded = false, Message = "Failed to add user to new role: " + string.Join(", ", addResult.Errors.Select(e => e.Description)) };
+            var errorMessage = string.Join(", ", addResult.Errors.Select(e => e.Description));
+            return new ChangeUserRoleReply { Succeeded = false, Message = $"Failed to assign new role: {errorMessage}" };
         }
 
-        return new ChangeUserRoleReply { Succeeded = true, Message = "Role changed successfully" };
+        return new ChangeUserRoleReply { Succeeded = true, Message = $"Role changed to '{request.NewRole}' successfully." };
     }
 
 }
