@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Presentation.Data.Contexts;
+using Presentation.Seeders;
 using Presentation.Services;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddGrpc();
@@ -15,6 +16,13 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>(option =>
 
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    await RoleSeeder.SeedRolesAsync(services);
+}
+
 app.MapGrpcService<AccountService>();
 app.MapGet("/", () => "Communication with gRPC endpoints must be made through a gRPC client. To learn how to create a client, visit: https://go.microsoft.com/fwlink/?linkid=2086909");
 

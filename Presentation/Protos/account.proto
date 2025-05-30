@@ -56,7 +56,7 @@ message Account {
 	string email = 2;
 	string user_name = 3;
 	string phone_number = 4;
-	string roleName = 5;
+	string role_name = 5;
 }
 
 message GetAccountRequest {
